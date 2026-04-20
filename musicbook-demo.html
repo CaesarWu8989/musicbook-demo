@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>卓著樂譜 · 閱讀器 Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --gold: #c9963a;
+    --gold-light: #e8b95a;
+    --bg-dark: #111010;
+    --bg-card: #1c1b1a;
+    --bg-surface: #242321;
+    --text-primary: #f0ece4;
+    --text-secondary: #8a867e;
+    --text-muted: #55524d;
+    --border: rgba(255,255,255,0.07);
+    --score-bg: #faf8f0;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    font-family: 'Noto Sans TC', sans-serif;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* ── Layout ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* ── Top Bar ── */
+  #topbar {
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    border-bottom: 0.5px solid var(--border);
+    padding: 12px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .btn-back {
+    width: 32px; height: 32px;
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px;
+    transition: background 0.15s;
+  }
+  .btn-back:active { background: #333; }
+  .book-title {
+    font-size: 14px; font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .book-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .page-badge {
+    background: var(--bg-surface);
+    border: 0.5px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  /* ── Feature Pills ── */
+  #pills {
+    flex-shrink: 0;
+    display: flex; gap: 6px;
+    padding: 8px 16px;
+    overflow-x: auto; scrollbar-width: none;
+    background: var(--bg-dark);
+  }
+  #pills::-webkit-scrollbar { display: none; }
+  .pill {
+    flex-shrink: 0;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 10.5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .pill.active {
+    background: rgba(201,150,58,0.15);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+
+  /* ── Viewer ── */
+  #viewer {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #0e0e0d;
+    cursor: grab;
+    touch-action: pan-y;
+  }
+  #viewer.grabbing { cursor: grabbing; }
+
+  .page-slot {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s ease;
+    will-change: transform, opacity;
+  }
+  .page-slot.left  { transform: translateX(-100%); opacity: 0; }
+  .page-slot.mid   { transform: translateX(0);     opacity: 1; }
+  .page-slot.right { transform: translateX(100%);  opacity: 0; }
+
+  .score-wrap {
+    width: 88%;
+    height: 92%;
+    background: var(--score-bg);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    transform-origin: center center;
+    transition: transform 0.18s ease;
+  }
+  .score-wrap svg { width: 100%; height: 100%; display: block; }
+
+  /* ── Hint overlays ── */
+  #swipe-hint {
+    position: absolute;
+    inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px;
+    pointer-events: none;
+    transition: opacity 0.6s;
+  }
+  #swipe-hint.gone { opacity: 0; }
+  .hint-row { display: flex; align-items: center; gap: 14px; }
+  .hint-arrow { font-size: 24px; color: rgba(255,255,255,0.3); }
+  .hint-label { font-size: 12px; color: rgba(255,255,255,0.3); letter-spacing: 0.04em; }
+
+  #toast {
+    position: absolute;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,18,16,0.88);
+    border: 0.5px solid rgba(201,150,58,0.3);
+    color: var(--gold-light);
+    font-size: 11px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── Bottom bar ── */
+  #bottombar {
+    flex-shrink: 0;
+    background: var(--bg-dark);
+    border-top: 0.5px solid var(--border);
+    padding: 10px 16px 12px;
+  }
+  .controls-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .btn-ctrl {
+    width: 38px; height: 38px; flex-shrink: 0;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    transition: all 0.15s;
+  }
+  .btn-ctrl:active { background: #333; transform: scale(0.95); }
+  .btn-ctrl:disabled { opacity: 0.25; cursor: default; }
+  .btn-ctrl.primary {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #111;
+  }
+  .btn-ctrl.primary:active { background: var(--gold-light); }
+
+  #progress-track {
+    flex: 1; height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px; overflow: hidden;
+    cursor: pointer;
+  }
+  #progress-fill {
+    height: 100%; background: var(--gold);
+    border-radius: 2px; transition: width 0.3s ease;
+  }
+
+  .zoom-group {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+  }
+  .btn-zoom {
+    width: 30px; height: 30px;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 15px; font-weight: 500;
+    transition: background 0.15s;
+  }
+  .btn-zoom:active { background: #333; }
+  #zoom-val { font-size: 11px; color: var(--text-muted); min-width: 34px; text-align: center; }
+
+  /* ── Thumbnail strip ── */
+  #thumbstrip {
+    display: flex; gap: 8px;
+    padding: 0 16px 2px;
+    overflow-x: auto; scrollbar-width: none;
+    margin-top: 8px;
+  }
+  #thumbstrip::-webkit-scrollbar { display: none; }
+  .thumb {
+    flex-shrink: 0;
+    width: 42px; height: 58px;
+    background: var(--bg-card);
+    border: 1.5px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+  .thumb.active { border-color: var(--gold); }
+  .thumb svg { width: 100%; height: 100%; display: block; }
+  .thumb-num {
+    position: absolute; bottom: 2px; left: 0; right: 0;
+    text-align: center; font-size: 8px; color: var(--text-muted);
+  }
+
+  /* ── Demo badge ── */
+  .demo-badge {
+    display: inline-block;
+    background: rgba(201,150,58,0.2);
+    border: 0.5px solid rgba(201,150,58,0.4);
+    color: var(--gold);
+    font-size: 9px; font-weight: 500;
+    padding: 2px 7px; border-radius: 4px;
+    margin-left: 6px; vertical-align: middle;
+  }
+
+  @media (min-height: 700px) {
+    .score-wrap { height: 94%; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="topbar-left">
+      <div class="btn-back">←</div>
+      <div>
+        <div class="book-title">流行鋼琴精選集 Vol.3 <span class="demo-badge">DEMO</span></div>
+        <div class="book-sub">卓著樂譜 · 新版閱讀體驗</div>
+      </div>
+    </div>
+    <div class="page-badge" id="page-label">1 / 5</div>
+  </div>
+
+  <div id="pills">
+    <div class="pill active" id="p-swipe">← → 滑動翻頁</div>
+    <div class="pill" id="p-zoom">雙指縮放</div>
+    <div class="pill" id="p-preload">預載下頁</div>
+    <div class="pill" id="p-bookmark">書籤</div>
+    <div class="pill" id="p-rotate">橫轉直讀</div>
+  </div>
+
+  <div id="viewer">
+    <div class="page-slot left"  id="slot-l"></div>
+    <div class="page-slot mid"   id="slot-m"></div>
+    <div class="page-slot right" id="slot-r"></div>
+    <div id="swipe-hint">
+      <div class="hint-row">
+        <span class="hint-arrow">←</span>
+        <span class="hint-label">左右滑動翻頁</span>
+        <span class="hint-arrow">→</span>
+      </div>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <div id="bottombar">
+    <div class="controls-row">
+      <button class="btn-ctrl" id="btn-prev">←</button>
+      <div id="progress-track"><div id="progress-fill"></div></div>
+      <button class="btn-ctrl primary" id="btn-next">→</button>
+      <div class="zoom-group">
+        <button class="btn-zoom" id="btn-zm">−</button>
+        <span id="zoom-val">100%</span>
+        <button class="btn-zoom" id="btn-zp">+</button>
+      </div>
+    </div>
+    <div id="thumbstrip" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 5;
+let cur = 0;
+let zoom = 1.0;
+let pinching = false, pinchDist0 = 0, pinchZoom0 = 1;
+let swipeX0 = 0, swipeY0 = 0, swiping = false;
+let toastTimer, hintGone = false;
+
+const songs = [
+  { title:'夜曲', sub:'Jay Chou', key:'F min', bpm:72 },
+  { title:'告白氣球', sub:'Jay Chou', key:'C maj', bpm:88 },
+  { title:'想你', sub:'五月天', key:'G maj', bpm:66 },
+  { title:'倒帶', sub:'Jay Chou', key:'E min', bpm:80 },
+  { title:'愛很簡單', sub:'陶喆', key:'D maj', bpm:76 },
+];
+
+function buildSVG(n, small=false) {
+  const s = songs[n];
+  const W=280, H=small?160:400;
+  const fs = small ? 0.42 : 1;
+
+  function stave(y, pat) {
+    let out = '';
+    for(let i=0;i<5;i++) out+=`<line x1="20" y1="${y+i*6}" x2="260" y2="${y+i*6}" stroke="#555" stroke-width="0.8"/>`;
+    out+=`<line x1="20" y1="${y}" x2="20" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
+    out+=`<line x1="260" y1="${y}" x2="260" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
+    out+=`<line x1="254" y1="${y}" x2="254" y2="${y+24}" stroke="#444" stroke-width="3"/>`;
+    const xs=[32,50,66,84,100,118,136,154,170,188,204,222];
+    pat.forEach((v,i)=>{
+      if(!v) return;
+      const x=xs[i], ny=y+12-(i%5)*4;
+      out+=`<ellipse cx="${x}" cy="${ny}" rx="5" ry="3.5" fill="#2a2a2a" transform="rotate(-15,${x},${ny})"/>`;
+      if(i%3!==0) out+=`<line x1="${x+5}" y1="${ny}" x2="${x+5}" y2="${ny-22}" stroke="#2a2a2a" stroke-width="1.2"/>`;
+    });
+    if(!small) out+=`<text x="26" y="${y+20}" font-size="9" fill="#777" font-family="serif">4/4</text>`;
+    return out;
+  }
+
+  const pats=[
+    [1,0,1,0,1,0,1,1,0,1,0,1],[0,1,0,1,1,0,0,1,1,0,1,0],
+    [1,1,0,0,1,0,1,0,0,1,1,0],[0,0,1,1,0,1,0,1,1,0,0,1]
+  ];
+
+  let staves='';
+  if(small){
+    staves=stave(55,[1,0,1,0,1,0,1,1,0,1,0,1]);
+    staves+=stave(110,[0,1,0,1,1,0,0,1,1,0,1,0]);
+  } else {
+    [75,155,235,315].forEach((y,i)=>{ staves+=stave(y,pats[i]); });
+  }
+
+  const titleY=small?22:28, subY=small?34:44;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+<rect width="${W}" height="${H}" fill="#faf8f0"/>
+<text x="140" y="${titleY}" text-anchor="middle" font-size="${small?10:15}" font-weight="bold" fill="#1a1a1a" font-family="Noto Serif TC,serif">${s.title}</text>
+<text x="140" y="${subY}" text-anchor="middle" font-size="${small?7:9}" fill="#888" font-family="Noto Sans TC,sans-serif">${s.sub}  ${s.key}  ♩=${s.bpm}</text>
+${staves}
+${!small?`<text x="140" y="${H-8}" text-anchor="middle" font-size="9" fill="#bbb" font-family="sans-serif">— ${n+1} —</text>`:''}
+</svg>`;
+}
+
+function makeSlotContent(n, applyZoom=true) {
+  if(n<0||n>=TOTAL) return;
+  const wrap = document.createElement('div');
+  wrap.className='score-wrap';
+  if(applyZoom) wrap.style.transform=`scale(${zoom})`;
+  wrap.innerHTML = buildSVG(n);
+  return wrap;
+}
+
+function allScoreWraps() { return document.querySelectorAll('.score-wrap'); }
+
+function render() {
+  const L=document.getElementById('slot-l');
+  const M=document.getElementById('slot-m');
+  const R=document.getElementById('slot-r');
+  L.innerHTML=''; M.innerHTML=''; R.innerHTML='';
+  if(cur>0) L.appendChild(makeSlotContent(cur-1));
+  M.appendChild(makeSlotContent(cur));
+  if(cur<TOTAL-1) R.appendChild(makeSlotContent(cur+1));
+
+  document.getElementById('page-label').textContent=`${cur+1} / ${TOTAL}`;
+  document.getElementById('progress-fill').style.width=`${((cur+1)/TOTAL)*100}%`;
+  document.getElementById('btn-prev').disabled=cur===0;
+  document.getElementById('btn-next').disabled=cur===TOTAL-1;
+  document.querySelectorAll('.thumb').forEach((t,i)=>t.classList.toggle('active',i===cur));
+}
+
+function buildThumbs() {
+  const strip=document.getElementById('thumbstrip');
+  for(let i=0;i<TOTAL;i++){
+    const d=document.createElement('div');
+    d.className='thumb'+(i===0?' active':'');
+    d.innerHTML=buildSVG(i,true)+`<div class="thumb-num">${i+1}</div>`;
+    d.addEventListener('click',()=>{ jumpTo(i); });
+    strip.appendChild(d);
+  }
+}
+
+function jumpTo(n) {
+  if(n===cur||n<0||n>=TOTAL) return;
+  cur=n; render(); activePill('p-swipe');
+}
+
+function go(dir) {
+  if(dir==='next'&&cur<TOTAL-1) { animSlide('next'); }
+  else if(dir==='prev'&&cur>0) { animSlide('prev'); }
+  hideHint();
+}
+
+function animSlide(dir) {
+  const L=document.getElementById('slot-l');
+  const M=document.getElementById('slot-m');
+  const R=document.getElementById('slot-r');
+  const dur=340;
+  if(dir==='next'){
+    M.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
+    R.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
+    M.style.transform='translateX(-100%)'; M.style.opacity='0';
+    R.style.transform='translateX(0)'; R.style.opacity='1';
+    setTimeout(()=>{ cur++; M.style.transition=''; R.style.transition=''; render(); },dur+10);
+  } else {
+    M.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
+    L.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
+    M.style.transform='translateX(100%)'; M.style.opacity='0';
+    L.style.transform='translateX(0)'; L.style.opacity='1';
+    setTimeout(()=>{ cur--; M.style.transition=''; L.style.transition=''; render(); },dur+10);
+  }
+  activePill('p-swipe');
+}
+
+function setZoom(z) {
+  zoom = Math.min(3,Math.max(0.5,z));
+  allScoreWraps().forEach(el=>el.style.transform=`scale(${zoom})`);
+  document.getElementById('zoom-val').textContent=`${Math.round(zoom*100)}%`;
+  showToast(`縮放 ${Math.round(zoom*100)}%`);
+  activePill('p-zoom');
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+function activePill(id) {
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function hideHint() {
+  if(hintGone) return; hintGone=true;
+  document.getElementById('swipe-hint').classList.add('gone');
+}
+
+const viewer=document.getElementById('viewer');
+
+viewer.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    pinching=true; swiping=false;
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    pinchDist0=Math.sqrt(dx*dx+dy*dy); pinchZoom0=zoom;
+    e.preventDefault();
+  } else {
+    swipeX0=e.touches[0].clientX; swipeY0=e.touches[0].clientY; swiping=true; pinching=false;
+  }
+},{passive:false});
+
+viewer.addEventListener('touchmove',e=>{
+  if(pinching&&e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    setZoom(pinchZoom0*(Math.sqrt(dx*dx+dy*dy)/pinchDist0));
+    e.preventDefault();
+  }
+},{passive:false});
+
+viewer.addEventListener('touchend',e=>{
+  if(pinching){ pinching=false; return; }
+  if(!swiping) return; swiping=false;
+  const dx=e.changedTouches[0].clientX-swipeX0;
+  const dy=e.changedTouches[0].clientY-swipeY0;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) go(dx<0?'next':'prev');
+});
+
+let mouseX0=0;
+viewer.addEventListener('mousedown',e=>{ mouseX0=e.clientX; viewer.classList.add('grabbing'); });
+viewer.addEventListener('mouseup',e=>{
+  viewer.classList.remove('grabbing');
+  if(Math.abs(e.clientX-mouseX0)>60) go(e.clientX<mouseX0?'next':'prev');
+});
+
+document.getElementById('btn-prev').addEventListener('click',()=>go('prev'));
+document.getElementById('btn-next').addEventListener('click',()=>go('next'));
+document.getElementById('btn-zm').addEventListener('click',()=>setZoom(zoom-0.25));
+document.getElementById('btn-zp').addEventListener('click',()=>setZoom(zoom+0.25));
+
+document.getElementById('progress-track').addEventListener('click',e=>{
+  const r=e.currentTarget.getBoundingClientRect();
+  const ratio=(e.clientX-r.left)/r.width;
+  jumpTo(Math.round(ratio*(TOTAL-1)));
+});
+
+document.getElementById('p-bookmark').addEventListener('click',()=>{
+  activePill('p-bookmark'); showToast(`已書籤第 ${cur+1} 頁`);
+});
+document.getElementById('p-preload').addEventListener('click',()=>{
+  activePill('p-preload'); showToast('下一頁已預載完成 ✓');
+});
+document.getElementById('p-rotate').addEventListener('click',()=>{
+  activePill('p-rotate'); showToast('橫向閱讀模式（示意）');
+});
+
+buildThumbs(); render();
+</script>
+</body>
+</html>
