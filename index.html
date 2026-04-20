@@ -6,538 +6,420 @@
 <title>卓著樂譜 · 閱讀器 Demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --gold:#c9963a;--gold-light:#e8b95a;
+  --bg:#111010;--bg-card:#1c1b1a;--bg-surf:#242321;
+  --t1:#f0ece4;--t2:#8a867e;--t3:#55524d;
+  --border:rgba(255,255,255,0.07);
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--t1);font-family:'Noto Sans TC',sans-serif;overflow:hidden;overscroll-behavior:none}
 
-  :root {
-    --gold: #c9963a;
-    --gold-light: #e8b95a;
-    --bg-dark: #111010;
-    --bg-card: #1c1b1a;
-    --bg-surface: #242321;
-    --text-primary: #f0ece4;
-    --text-secondary: #8a867e;
-    --text-muted: #55524d;
-    --border: rgba(255,255,255,0.07);
-    --score-bg: #faf8f0;
-  }
+/* ── app shell ── */
+#app{display:flex;flex-direction:column;height:100dvh;max-width:600px;margin:0 auto}
 
-  html, body {
-    width: 100%; height: 100%;
-    background: var(--bg-dark);
-    color: var(--text-primary);
-    font-family: 'Noto Sans TC', sans-serif;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
+/* ── topbar ── */
+#topbar{flex-shrink:0;background:var(--bg);border-bottom:0.5px solid var(--border);padding:11px 14px 9px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.tl{display:flex;align-items:center;gap:9px}
+.btn-back{width:30px;height:30px;border:0.5px solid rgba(255,255,255,0.12);border-radius:8px;background:var(--bg-surf);color:var(--t2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px}
+.book-title{font-size:13px;font-weight:500;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(200px,40vw)}
+.book-sub{font-size:10px;color:var(--t3);margin-top:1px}
+.pg-badge{background:var(--bg-surf);border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--t2);white-space:nowrap}
+.demo-tag{display:inline-block;background:rgba(201,150,58,.2);border:0.5px solid rgba(201,150,58,.4);color:var(--gold);font-size:9px;font-weight:500;padding:2px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
 
-  /* ── Layout ── */
-  #app {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    max-width: 480px;
-    margin: 0 auto;
-    position: relative;
-  }
+/* ── pills ── */
+#pills{flex-shrink:0;display:flex;gap:6px;padding:7px 14px;overflow-x:auto;scrollbar-width:none;background:var(--bg)}
+#pills::-webkit-scrollbar{display:none}
+.pill{flex-shrink:0;border:0.5px solid rgba(255,255,255,0.1);background:var(--bg-surf);color:var(--t3);border-radius:20px;padding:4px 11px;font-size:10px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.pill.active{background:rgba(201,150,58,.15);border-color:var(--gold);color:var(--gold-light)}
 
-  /* ── Top Bar ── */
-  #topbar {
-    flex-shrink: 0;
-    background: var(--bg-dark);
-    border-bottom: 0.5px solid var(--border);
-    padding: 12px 16px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .topbar-left { display: flex; align-items: center; gap: 10px; }
-  .btn-back {
-    width: 32px; height: 32px;
-    border: 0.5px solid rgba(255,255,255,0.12);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 15px;
-    transition: background 0.15s;
-  }
-  .btn-back:active { background: #333; }
-  .book-title {
-    font-size: 14px; font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 180px;
-  }
-  .book-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
-  .page-badge {
-    background: var(--bg-surface);
-    border: 0.5px solid var(--border);
-    border-radius: 20px;
-    padding: 4px 10px;
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
+/* ── viewer row (side btns + viewer) ── */
+#vrow{flex:1;display:flex;align-items:stretch;overflow:hidden;background:#0d0d0c}
+.side-btn{flex-shrink:0;width:clamp(36px,7vw,52px);background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.22);font-size:clamp(20px,4vw,30px);transition:background .15s, color .15s;user-select:none;-webkit-user-select:none}
+.side-btn:hover{background:rgba(255,255,255,.04);color:rgba(255,255,255,.5)}
+.side-btn:active{background:rgba(255,255,255,.08)}
+.side-btn:disabled{opacity:.1;cursor:default}
+#viewer{flex:1;position:relative;overflow:hidden;cursor:grab;touch-action:pan-y}
+#viewer.grabbing{cursor:grabbing}
 
-  /* ── Feature Pills ── */
-  #pills {
-    flex-shrink: 0;
-    display: flex; gap: 6px;
-    padding: 8px 16px;
-    overflow-x: auto; scrollbar-width: none;
-    background: var(--bg-dark);
-  }
-  #pills::-webkit-scrollbar { display: none; }
-  .pill {
-    flex-shrink: 0;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    background: var(--bg-surface);
-    color: var(--text-muted);
-    border-radius: 20px;
-    padding: 5px 12px;
-    font-size: 10.5px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .pill.active {
-    background: rgba(201,150,58,0.15);
-    border-color: var(--gold);
-    color: var(--gold-light);
-  }
+/* ── page slots ── */
+.slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform .36s cubic-bezier(.4,0,.2,1),opacity .36s ease;will-change:transform,opacity}
+.slot.L{transform:translateX(-100%);opacity:0}
+.slot.M{transform:translateX(0);opacity:1}
+.slot.R{transform:translateX(100%);opacity:0}
+.score-wrap{width:92%;height:91%;background:#faf8f0;border-radius:5px;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,.65)}
+.score-wrap svg,.score-wrap img{width:100%;height:100%;display:block;object-fit:contain;background:#faf8f0}
 
-  /* ── Viewer ── */
-  #viewer {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    background: #0e0e0d;
-    cursor: grab;
-    touch-action: pan-y;
-  }
-  #viewer.grabbing { cursor: grabbing; }
+/* ── hint / toast ── */
+#hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;transition:opacity .6s}
+#hint.gone{opacity:0}
+.hr{display:flex;align-items:center;gap:12px}
+.ha{font-size:22px;color:rgba(255,255,255,.28)}
+.hl{font-size:11px;color:rgba(255,255,255,.28);letter-spacing:.04em}
+#toast{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(18,16,14,.9);border:0.5px solid rgba(201,150,58,.3);color:var(--gold-light);font-size:11px;padding:5px 13px;border-radius:20px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .3s;z-index:20}
+#toast.show{opacity:1}
 
-  .page-slot {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    display: flex; align-items: center; justify-content: center;
-    transition: transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s ease;
-    will-change: transform, opacity;
-  }
-  .page-slot.left  { transform: translateX(-100%); opacity: 0; }
-  .page-slot.mid   { transform: translateX(0);     opacity: 1; }
-  .page-slot.right { transform: translateX(100%);  opacity: 0; }
+/* ── bottombar ── */
+#bottombar{flex-shrink:0;background:var(--bg);border-top:0.5px solid var(--border);padding:9px 14px 11px}
+.ctrl-row{display:flex;align-items:center;gap:9px}
+.btn-upload{flex-shrink:0;display:flex;align-items:center;gap:5px;background:rgba(201,150,58,.12);border:0.5px solid rgba(201,150,58,.35);color:var(--gold);border-radius:8px;padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn-upload:hover{background:rgba(201,150,58,.22)}
+.btn-upload:active{background:rgba(201,150,58,.3)}
+#prog-track{flex:1;height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;cursor:pointer}
+#prog-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s ease}
+#thumbstrip{display:flex;gap:7px;padding:0 1px 2px;overflow-x:auto;scrollbar-width:none;margin-top:9px}
+#thumbstrip::-webkit-scrollbar{display:none}
+.thumb{flex-shrink:0;width:38px;height:52px;background:var(--bg-card);border:1.5px solid transparent;border-radius:4px;overflow:hidden;cursor:pointer;transition:border-color .2s;position:relative}
+.thumb.active{border-color:var(--gold)}
+.thumb svg,.thumb img{width:100%;height:100%;display:block;object-fit:cover;background:#faf8f0}
+.thumb-n{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:var(--t3);background:rgba(0,0,0,.45);line-height:1.5}
 
-  .score-wrap {
-    width: 88%;
-    height: 92%;
-    background: var(--score-bg);
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-    transform-origin: center center;
-    transition: transform 0.18s ease;
-  }
-  .score-wrap svg { width: 100%; height: 100%; display: block; }
+/* ── upload overlay ── */
+#overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.72);align-items:flex-end;justify-content:center}
+#overlay.open{display:flex}
+#sheet{background:var(--bg-card);border-radius:18px 18px 0 0;border-top:0.5px solid rgba(255,255,255,.1);width:100%;max-width:600px;padding:18px 18px 40px}
+.sh{width:34px;height:4px;background:rgba(255,255,255,.14);border-radius:2px;margin:0 auto 18px}
+.s-title{font-size:15px;font-weight:500;color:var(--t1);margin-bottom:3px}
+.s-sub{font-size:11px;color:var(--t3);margin-bottom:18px}
+#drop{border:1.5px dashed rgba(201,150,58,.35);border-radius:12px;padding:30px 16px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(201,150,58,.04);margin-bottom:14px}
+#drop.over{border-color:var(--gold);background:rgba(201,150,58,.1)}
+.d-icon{font-size:26px;margin-bottom:8px}
+.d-lbl{font-size:13px;color:var(--t2);margin-bottom:3px}
+.d-hint{font-size:11px;color:var(--t3)}
+.ftags{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+.ftag{background:var(--bg-surf);border:0.5px solid var(--border);color:var(--t3);border-radius:6px;padding:3px 9px;font-size:11px}
+.btn-cancel{width:100%;background:var(--bg-surf);border:0.5px solid var(--border);color:var(--t2);border-radius:10px;padding:12px;font-size:13px;cursor:pointer;transition:background .15s}
+.btn-cancel:active{background:#333}
+#file-in{display:none}
 
-  /* ── Hint overlays ── */
-  #swipe-hint {
-    position: absolute;
-    inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 10px;
-    pointer-events: none;
-    transition: opacity 0.6s;
-  }
-  #swipe-hint.gone { opacity: 0; }
-  .hint-row { display: flex; align-items: center; gap: 14px; }
-  .hint-arrow { font-size: 24px; color: rgba(255,255,255,0.3); }
-  .hint-label { font-size: 12px; color: rgba(255,255,255,0.3); letter-spacing: 0.04em; }
-
-  #toast {
-    position: absolute;
-    bottom: 14px; left: 50%;
-    transform: translateX(-50%);
-    background: rgba(20,18,16,0.88);
-    border: 0.5px solid rgba(201,150,58,0.3);
-    color: var(--gold-light);
-    font-size: 11px;
-    padding: 5px 14px;
-    border-radius: 20px;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  #toast.show { opacity: 1; }
-
-  /* ── Bottom bar ── */
-  #bottombar {
-    flex-shrink: 0;
-    background: var(--bg-dark);
-    border-top: 0.5px solid var(--border);
-    padding: 10px 16px 12px;
-  }
-  .controls-row {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .btn-ctrl {
-    width: 38px; height: 38px; flex-shrink: 0;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 16px;
-    transition: all 0.15s;
-  }
-  .btn-ctrl:active { background: #333; transform: scale(0.95); }
-  .btn-ctrl:disabled { opacity: 0.25; cursor: default; }
-  .btn-ctrl.primary {
-    background: var(--gold);
-    border-color: var(--gold);
-    color: #111;
-  }
-  .btn-ctrl.primary:active { background: var(--gold-light); }
-
-  #progress-track {
-    flex: 1; height: 2px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 2px; overflow: hidden;
-    cursor: pointer;
-  }
-  #progress-fill {
-    height: 100%; background: var(--gold);
-    border-radius: 2px; transition: width 0.3s ease;
-  }
-
-  .zoom-group {
-    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
-  }
-  .btn-zoom {
-    width: 30px; height: 30px;
-    border: 0.5px solid rgba(255,255,255,0.1);
-    border-radius: 8px;
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 15px; font-weight: 500;
-    transition: background 0.15s;
-  }
-  .btn-zoom:active { background: #333; }
-  #zoom-val { font-size: 11px; color: var(--text-muted); min-width: 34px; text-align: center; }
-
-  /* ── Thumbnail strip ── */
-  #thumbstrip {
-    display: flex; gap: 8px;
-    padding: 0 16px 2px;
-    overflow-x: auto; scrollbar-width: none;
-    margin-top: 8px;
-  }
-  #thumbstrip::-webkit-scrollbar { display: none; }
-  .thumb {
-    flex-shrink: 0;
-    width: 42px; height: 58px;
-    background: var(--bg-card);
-    border: 1.5px solid transparent;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: border-color 0.2s;
-    position: relative;
-  }
-  .thumb.active { border-color: var(--gold); }
-  .thumb svg { width: 100%; height: 100%; display: block; }
-  .thumb-num {
-    position: absolute; bottom: 2px; left: 0; right: 0;
-    text-align: center; font-size: 8px; color: var(--text-muted);
-  }
-
-  /* ── Demo badge ── */
-  .demo-badge {
-    display: inline-block;
-    background: rgba(201,150,58,0.2);
-    border: 0.5px solid rgba(201,150,58,0.4);
-    color: var(--gold);
-    font-size: 9px; font-weight: 500;
-    padding: 2px 7px; border-radius: 4px;
-    margin-left: 6px; vertical-align: middle;
-  }
-
-  @media (min-height: 700px) {
-    .score-wrap { height: 94%; }
-  }
+/* ── responsive: wider screens show bigger viewer ── */
+@media(min-width:480px){
+  .score-wrap{width:88%;height:93%}
+  .side-btn{width:clamp(44px,6vw,60px)}
+}
+@media(min-height:800px){
+  .score-wrap{height:94%}
+}
 </style>
 </head>
 <body>
 <div id="app">
 
   <div id="topbar">
-    <div class="topbar-left">
+    <div class="tl">
       <div class="btn-back">←</div>
       <div>
-        <div class="book-title">流行鋼琴精選集 Vol.3 <span class="demo-badge">DEMO</span></div>
+        <div class="book-title" id="book-title">流行鋼琴精選集 Vol.3<span class="demo-tag">DEMO</span></div>
         <div class="book-sub">卓著樂譜 · 新版閱讀體驗</div>
       </div>
     </div>
-    <div class="page-badge" id="page-label">1 / 5</div>
+    <div class="pg-badge" id="pg-lbl">1 / 5</div>
   </div>
 
   <div id="pills">
     <div class="pill active" id="p-swipe">← → 滑動翻頁</div>
-    <div class="pill" id="p-zoom">雙指縮放</div>
     <div class="pill" id="p-preload">預載下頁</div>
     <div class="pill" id="p-bookmark">書籤</div>
     <div class="pill" id="p-rotate">橫轉直讀</div>
   </div>
 
-  <div id="viewer">
-    <div class="page-slot left"  id="slot-l"></div>
-    <div class="page-slot mid"   id="slot-m"></div>
-    <div class="page-slot right" id="slot-r"></div>
-    <div id="swipe-hint">
-      <div class="hint-row">
-        <span class="hint-arrow">←</span>
-        <span class="hint-label">左右滑動翻頁</span>
-        <span class="hint-arrow">→</span>
+  <div id="vrow">
+    <button class="side-btn" id="btn-prev">&#8249;</button>
+    <div id="viewer">
+      <div class="slot L" id="sl-l"></div>
+      <div class="slot M" id="sl-m"></div>
+      <div class="slot R" id="sl-r"></div>
+      <div id="hint">
+        <div class="hr"><span class="ha">←</span><span class="hl">左右滑動翻頁</span><span class="ha">→</span></div>
       </div>
+      <div id="toast"></div>
     </div>
-    <div id="toast"></div>
+    <button class="side-btn" id="btn-next">&#8250;</button>
   </div>
 
   <div id="bottombar">
-    <div class="controls-row">
-      <button class="btn-ctrl" id="btn-prev">←</button>
-      <div id="progress-track"><div id="progress-fill"></div></div>
-      <button class="btn-ctrl primary" id="btn-next">→</button>
-      <div class="zoom-group">
-        <button class="btn-zoom" id="btn-zm">−</button>
-        <span id="zoom-val">100%</span>
-        <button class="btn-zoom" id="btn-zp">+</button>
-      </div>
+    <div class="ctrl-row">
+      <button class="btn-upload" id="btn-up">＋ 上傳樂譜</button>
+      <div id="prog-track"><div id="prog-fill"></div></div>
     </div>
-    <div id="thumbstrip" style="margin-top:10px;"></div>
+    <div id="thumbstrip"></div>
   </div>
 </div>
 
-<script>
-const TOTAL = 5;
-let cur = 0;
-let zoom = 1.0;
-let pinching = false, pinchDist0 = 0, pinchZoom0 = 1;
-let swipeX0 = 0, swipeY0 = 0, swiping = false;
-let toastTimer, hintGone = false;
+<!-- Upload sheet -->
+<div id="overlay">
+  <div id="sheet">
+    <div class="sh"></div>
+    <div class="s-title">上傳你的樂譜</div>
+    <div class="s-sub">支援 PDF 多頁、或多張圖片，可一次選多個</div>
+    <div id="drop">
+      <div class="d-icon">📄</div>
+      <div class="d-lbl">點此選擇檔案，或拖曳到這裡</div>
+      <div class="d-hint">上傳後會取代目前的示範頁面</div>
+    </div>
+    <div class="ftags">
+      <span class="ftag">PDF</span>
+      <span class="ftag">JPG</span>
+      <span class="ftag">PNG</span>
+      <span class="ftag">WEBP</span>
+      <span class="ftag">GIF</span>
+    </div>
+    <button class="btn-cancel" id="btn-cancel">取消</button>
+  </div>
+</div>
+<input type="file" id="file-in" accept=".pdf,image/*" multiple>
 
-const songs = [
-  { title:'夜曲', sub:'Jay Chou', key:'F min', bpm:72 },
-  { title:'告白氣球', sub:'Jay Chou', key:'C maj', bpm:88 },
-  { title:'想你', sub:'五月天', key:'G maj', bpm:66 },
-  { title:'倒帶', sub:'Jay Chou', key:'E min', bpm:80 },
-  { title:'愛很簡單', sub:'陶喆', key:'D maj', bpm:76 },
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ── PDF.js worker ──
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── Demo SVG data ──
+const DEMO=[
+  {title:'夜曲',sub:'Jay Chou',key:'F min',bpm:72},
+  {title:'告白氣球',sub:'Jay Chou',key:'C maj',bpm:88},
+  {title:'想你',sub:'五月天',key:'G maj',bpm:66},
+  {title:'倒帶',sub:'Jay Chou',key:'E min',bpm:80},
+  {title:'愛很簡單',sub:'陶喆',key:'D maj',bpm:76},
 ];
 
-function buildSVG(n, small=false) {
-  const s = songs[n];
-  const W=280, H=small?160:400;
-  const fs = small ? 0.42 : 1;
-
-  function stave(y, pat) {
-    let out = '';
-    for(let i=0;i<5;i++) out+=`<line x1="20" y1="${y+i*6}" x2="260" y2="${y+i*6}" stroke="#555" stroke-width="0.8"/>`;
-    out+=`<line x1="20" y1="${y}" x2="20" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
-    out+=`<line x1="260" y1="${y}" x2="260" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
-    out+=`<line x1="254" y1="${y}" x2="254" y2="${y+24}" stroke="#444" stroke-width="3"/>`;
+function mkSVG(n,sm=false){
+  const s=DEMO[n%DEMO.length];
+  const W=280,H=sm?160:400;
+  function stave(y,p){
+    let o='';
+    for(let i=0;i<5;i++) o+=`<line x1="20" y1="${y+i*6}" x2="260" y2="${y+i*6}" stroke="#555" stroke-width="0.8"/>`;
+    o+=`<line x1="20" y1="${y}" x2="20" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
+    o+=`<line x1="260" y1="${y}" x2="260" y2="${y+24}" stroke="#444" stroke-width="1.5"/>`;
+    o+=`<line x1="254" y1="${y}" x2="254" y2="${y+24}" stroke="#444" stroke-width="3"/>`;
     const xs=[32,50,66,84,100,118,136,154,170,188,204,222];
-    pat.forEach((v,i)=>{
-      if(!v) return;
-      const x=xs[i], ny=y+12-(i%5)*4;
-      out+=`<ellipse cx="${x}" cy="${ny}" rx="5" ry="3.5" fill="#2a2a2a" transform="rotate(-15,${x},${ny})"/>`;
-      if(i%3!==0) out+=`<line x1="${x+5}" y1="${ny}" x2="${x+5}" y2="${ny-22}" stroke="#2a2a2a" stroke-width="1.2"/>`;
+    p.forEach((v,i)=>{
+      if(!v)return;
+      const x=xs[i],ny=y+12-(i%5)*4;
+      o+=`<ellipse cx="${x}" cy="${ny}" rx="5" ry="3.5" fill="#2a2a2a" transform="rotate(-15,${x},${ny})"/>`;
+      if(i%3!==0) o+=`<line x1="${x+5}" y1="${ny}" x2="${x+5}" y2="${ny-22}" stroke="#2a2a2a" stroke-width="1.2"/>`;
     });
-    if(!small) out+=`<text x="26" y="${y+20}" font-size="9" fill="#777" font-family="serif">4/4</text>`;
-    return out;
+    if(!sm) o+=`<text x="26" y="${y+20}" font-size="9" fill="#777" font-family="serif">4/4</text>`;
+    return o;
   }
-
-  const pats=[
-    [1,0,1,0,1,0,1,1,0,1,0,1],[0,1,0,1,1,0,0,1,1,0,1,0],
-    [1,1,0,0,1,0,1,0,0,1,1,0],[0,0,1,1,0,1,0,1,1,0,0,1]
-  ];
-
+  const pats=[[1,0,1,0,1,0,1,1,0,1,0,1],[0,1,0,1,1,0,0,1,1,0,1,0],[1,1,0,0,1,0,1,0,0,1,1,0],[0,0,1,1,0,1,0,1,1,0,0,1]];
   let staves='';
-  if(small){
-    staves=stave(55,[1,0,1,0,1,0,1,1,0,1,0,1]);
-    staves+=stave(110,[0,1,0,1,1,0,0,1,1,0,1,0]);
-  } else {
-    [75,155,235,315].forEach((y,i)=>{ staves+=stave(y,pats[i]); });
-  }
-
-  const titleY=small?22:28, subY=small?34:44;
+  if(sm){staves=stave(55,pats[0]);staves+=stave(110,pats[1]);}
+  else{[75,155,235,315].forEach((y,i)=>{staves+=stave(y,pats[i]);});}
+  const ty=sm?22:28,sy=sm?34:44;
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
 <rect width="${W}" height="${H}" fill="#faf8f0"/>
-<text x="140" y="${titleY}" text-anchor="middle" font-size="${small?10:15}" font-weight="bold" fill="#1a1a1a" font-family="Noto Serif TC,serif">${s.title}</text>
-<text x="140" y="${subY}" text-anchor="middle" font-size="${small?7:9}" fill="#888" font-family="Noto Sans TC,sans-serif">${s.sub}  ${s.key}  ♩=${s.bpm}</text>
+<text x="140" y="${ty}" text-anchor="middle" font-size="${sm?10:15}" font-weight="bold" fill="#1a1a1a" font-family="Noto Serif TC,serif">${s.title}</text>
+<text x="140" y="${sy}" text-anchor="middle" font-size="${sm?7:9}" fill="#888" font-family="Noto Sans TC,sans-serif">${s.sub}  ${s.key}  ♩=${s.bpm}</text>
 ${staves}
-${!small?`<text x="140" y="${H-8}" text-anchor="middle" font-size="9" fill="#bbb" font-family="sans-serif">— ${n+1} —</text>`:''}
+${!sm?`<text x="140" y="${H-8}" text-anchor="middle" font-size="9" fill="#bbb" font-family="sans-serif">— ${n+1} —</text>`:''}
 </svg>`;
 }
 
-function makeSlotContent(n, applyZoom=true) {
-  if(n<0||n>=TOTAL) return;
-  const wrap = document.createElement('div');
-  wrap.className='score-wrap';
-  if(applyZoom) wrap.style.transform=`scale(${zoom})`;
-  wrap.innerHTML = buildSVG(n);
-  return wrap;
+// ── Pages store ──
+// Each page: { kind:'svg'|'img', content: svgString|dataURL, label:string }
+let pages=[];
+let cur=0;
+let swiping=false,swX=0,swY=0,mouseX=0;
+let toastT,hintGone=false;
+
+function initDemo(){
+  pages=DEMO.map((s,i)=>({kind:'svg',content:mkSVG(i),thumb:mkSVG(i,true),label:s.title}));
 }
 
-function allScoreWraps() { return document.querySelectorAll('.score-wrap'); }
+// ── Render ──
+function mkWrap(page){
+  const w=document.createElement('div');
+  w.className='score-wrap';
+  if(page.kind==='svg'){w.innerHTML=page.content;}
+  else{const img=document.createElement('img');img.src=page.content;w.appendChild(img);}
+  return w;
+}
+function mkThumbEl(page,i){
+  const d=document.createElement('div');
+  d.className='thumb';
+  if(page.kind==='svg'){d.innerHTML=page.thumb||page.content;}
+  else{const img=document.createElement('img');img.src=page.thumb||page.content;d.appendChild(img);}
+  const n=document.createElement('div');n.className='thumb-n';n.textContent=i+1;d.appendChild(n);
+  d.addEventListener('click',()=>jumpTo(i));
+  return d;
+}
 
-function render() {
-  const L=document.getElementById('slot-l');
-  const M=document.getElementById('slot-m');
-  const R=document.getElementById('slot-r');
-  L.innerHTML=''; M.innerHTML=''; R.innerHTML='';
-  if(cur>0) L.appendChild(makeSlotContent(cur-1));
-  M.appendChild(makeSlotContent(cur));
-  if(cur<TOTAL-1) R.appendChild(makeSlotContent(cur+1));
+function render(){
+  const L=document.getElementById('sl-l');
+  const M=document.getElementById('sl-m');
+  const R=document.getElementById('sl-r');
+  L.innerHTML='';M.innerHTML='';R.innerHTML='';
+  if(cur>0) L.appendChild(mkWrap(pages[cur-1]));
+  M.appendChild(mkWrap(pages[cur]));
+  if(cur<pages.length-1) R.appendChild(mkWrap(pages[cur+1]));
 
-  document.getElementById('page-label').textContent=`${cur+1} / ${TOTAL}`;
-  document.getElementById('progress-fill').style.width=`${((cur+1)/TOTAL)*100}%`;
+  document.getElementById('pg-lbl').textContent=`${cur+1} / ${pages.length}`;
+  document.getElementById('prog-fill').style.width=`${((cur+1)/pages.length)*100}%`;
   document.getElementById('btn-prev').disabled=cur===0;
-  document.getElementById('btn-next').disabled=cur===TOTAL-1;
+  document.getElementById('btn-next').disabled=cur===pages.length-1;
   document.querySelectorAll('.thumb').forEach((t,i)=>t.classList.toggle('active',i===cur));
 }
 
-function buildThumbs() {
+function buildThumbs(){
   const strip=document.getElementById('thumbstrip');
-  for(let i=0;i<TOTAL;i++){
-    const d=document.createElement('div');
-    d.className='thumb'+(i===0?' active':'');
-    d.innerHTML=buildSVG(i,true)+`<div class="thumb-num">${i+1}</div>`;
-    d.addEventListener('click',()=>{ jumpTo(i); });
-    strip.appendChild(d);
-  }
+  strip.innerHTML='';
+  pages.forEach((p,i)=>strip.appendChild(mkThumbEl(p,i)));
 }
 
-function jumpTo(n) {
-  if(n===cur||n<0||n>=TOTAL) return;
-  cur=n; render(); activePill('p-swipe');
+function jumpTo(n){
+  if(n===cur||n<0||n>=pages.length)return;
+  cur=n;render();pill('p-swipe');
 }
 
-function go(dir) {
-  if(dir==='next'&&cur<TOTAL-1) { animSlide('next'); }
-  else if(dir==='prev'&&cur>0) { animSlide('prev'); }
+// ── Slide animation ──
+function go(dir){
+  if(dir==='next'&&cur<pages.length-1) slide('next');
+  else if(dir==='prev'&&cur>0) slide('prev');
   hideHint();
 }
-
-function animSlide(dir) {
-  const L=document.getElementById('slot-l');
-  const M=document.getElementById('slot-m');
-  const R=document.getElementById('slot-r');
-  const dur=340;
+function slide(dir){
+  const L=document.getElementById('sl-l');
+  const M=document.getElementById('sl-m');
+  const R=document.getElementById('sl-r');
+  const d=340;
   if(dir==='next'){
-    M.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
-    R.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
-    M.style.transform='translateX(-100%)'; M.style.opacity='0';
-    R.style.transform='translateX(0)'; R.style.opacity='1';
-    setTimeout(()=>{ cur++; M.style.transition=''; R.style.transition=''; render(); },dur+10);
-  } else {
-    M.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
-    L.style.transition=`transform ${dur}ms cubic-bezier(.4,0,.2,1),opacity ${dur}ms ease`;
-    M.style.transform='translateX(100%)'; M.style.opacity='0';
-    L.style.transform='translateX(0)'; L.style.opacity='1';
-    setTimeout(()=>{ cur--; M.style.transition=''; L.style.transition=''; render(); },dur+10);
+    M.style.transition=`transform ${d}ms cubic-bezier(.4,0,.2,1),opacity ${d}ms ease`;
+    R.style.transition=`transform ${d}ms cubic-bezier(.4,0,.2,1),opacity ${d}ms ease`;
+    M.style.transform='translateX(-100%)';M.style.opacity='0';
+    R.style.transform='translateX(0)';R.style.opacity='1';
+    setTimeout(()=>{cur++;M.style.transition='';R.style.transition='';render();},d+10);
+  }else{
+    M.style.transition=`transform ${d}ms cubic-bezier(.4,0,.2,1),opacity ${d}ms ease`;
+    L.style.transition=`transform ${d}ms cubic-bezier(.4,0,.2,1),opacity ${d}ms ease`;
+    M.style.transform='translateX(100%)';M.style.opacity='0';
+    L.style.transform='translateX(0)';L.style.opacity='1';
+    setTimeout(()=>{cur--;M.style.transition='';L.style.transition='';render();},d+10);
   }
-  activePill('p-swipe');
+  pill('p-swipe');
 }
 
-function setZoom(z) {
-  zoom = Math.min(3,Math.max(0.5,z));
-  allScoreWraps().forEach(el=>el.style.transform=`scale(${zoom})`);
-  document.getElementById('zoom-val').textContent=`${Math.round(zoom*100)}%`;
-  showToast(`縮放 ${Math.round(zoom*100)}%`);
-  activePill('p-zoom');
-}
-
-function showToast(msg) {
+// ── Toast / hint ──
+function toast(msg){
   const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800);
 }
+function pill(id){document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function hideHint(){if(hintGone)return;hintGone=true;document.getElementById('hint').classList.add('gone');}
 
-function activePill(id) {
-  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-function hideHint() {
-  if(hintGone) return; hintGone=true;
-  document.getElementById('swipe-hint').classList.add('gone');
-}
-
+// ── Touch / mouse swipe ──
 const viewer=document.getElementById('viewer');
-
 viewer.addEventListener('touchstart',e=>{
-  if(e.touches.length===2){
-    pinching=true; swiping=false;
-    const dx=e.touches[0].clientX-e.touches[1].clientX;
-    const dy=e.touches[0].clientY-e.touches[1].clientY;
-    pinchDist0=Math.sqrt(dx*dx+dy*dy); pinchZoom0=zoom;
-    e.preventDefault();
-  } else {
-    swipeX0=e.touches[0].clientX; swipeY0=e.touches[0].clientY; swiping=true; pinching=false;
-  }
-},{passive:false});
-
-viewer.addEventListener('touchmove',e=>{
-  if(pinching&&e.touches.length===2){
-    const dx=e.touches[0].clientX-e.touches[1].clientX;
-    const dy=e.touches[0].clientY-e.touches[1].clientY;
-    setZoom(pinchZoom0*(Math.sqrt(dx*dx+dy*dy)/pinchDist0));
-    e.preventDefault();
-  }
-},{passive:false});
-
+  if(e.touches.length===1){swX=e.touches[0].clientX;swY=e.touches[0].clientY;swiping=true;}
+},{passive:true});
 viewer.addEventListener('touchend',e=>{
-  if(pinching){ pinching=false; return; }
-  if(!swiping) return; swiping=false;
-  const dx=e.changedTouches[0].clientX-swipeX0;
-  const dy=e.changedTouches[0].clientY-swipeY0;
-  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>45) go(dx<0?'next':'prev');
-});
-
-let mouseX0=0;
-viewer.addEventListener('mousedown',e=>{ mouseX0=e.clientX; viewer.classList.add('grabbing'); });
+  if(!swiping)return;swiping=false;
+  const dx=e.changedTouches[0].clientX-swX;
+  const dy=e.changedTouches[0].clientY-swY;
+  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>44) go(dx<0?'next':'prev');
+},{passive:true});
+viewer.addEventListener('mousedown',e=>{mouseX=e.clientX;viewer.classList.add('grabbing');});
 viewer.addEventListener('mouseup',e=>{
   viewer.classList.remove('grabbing');
-  if(Math.abs(e.clientX-mouseX0)>60) go(e.clientX<mouseX0?'next':'prev');
+  if(Math.abs(e.clientX-mouseX)>60) go(e.clientX<mouseX?'next':'prev');
 });
 
 document.getElementById('btn-prev').addEventListener('click',()=>go('prev'));
 document.getElementById('btn-next').addEventListener('click',()=>go('next'));
-document.getElementById('btn-zm').addEventListener('click',()=>setZoom(zoom-0.25));
-document.getElementById('btn-zp').addEventListener('click',()=>setZoom(zoom+0.25));
-
-document.getElementById('progress-track').addEventListener('click',e=>{
+document.getElementById('prog-track').addEventListener('click',e=>{
   const r=e.currentTarget.getBoundingClientRect();
-  const ratio=(e.clientX-r.left)/r.width;
-  jumpTo(Math.round(ratio*(TOTAL-1)));
+  jumpTo(Math.round((e.clientX-r.left)/r.width*(pages.length-1)));
 });
 
-document.getElementById('p-bookmark').addEventListener('click',()=>{
-  activePill('p-bookmark'); showToast(`已書籤第 ${cur+1} 頁`);
-});
-document.getElementById('p-preload').addEventListener('click',()=>{
-  activePill('p-preload'); showToast('下一頁已預載完成 ✓');
-});
-document.getElementById('p-rotate').addEventListener('click',()=>{
-  activePill('p-rotate'); showToast('橫向閱讀模式（示意）');
-});
+// ── Pills ──
+document.getElementById('p-bookmark').addEventListener('click',()=>{pill('p-bookmark');toast(`已書籤第 ${cur+1} 頁`);});
+document.getElementById('p-preload').addEventListener('click',()=>{pill('p-preload');toast('下一頁已預載完成 ✓');});
+document.getElementById('p-rotate').addEventListener('click',()=>{pill('p-rotate');toast('橫向閱讀模式（示意）');});
 
-buildThumbs(); render();
+// ── Upload UI ──
+const overlay=document.getElementById('overlay');
+document.getElementById('btn-up').addEventListener('click',()=>overlay.classList.add('open'));
+document.getElementById('btn-cancel').addEventListener('click',()=>overlay.classList.remove('open'));
+overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.classList.remove('open');});
+
+const drop=document.getElementById('drop');
+const fileIn=document.getElementById('file-in');
+drop.addEventListener('click',()=>fileIn.click());
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');handleFiles(e.dataTransfer.files);});
+fileIn.addEventListener('change',()=>{handleFiles(fileIn.files);fileIn.value='';});
+
+// ── File handling ──
+async function handleFiles(files){
+  overlay.classList.remove('open');
+  const arr=Array.from(files);
+  if(!arr.length)return;
+  toast('載入中...');
+  const newPages=[];
+  for(const f of arr){
+    if(f.type==='application/pdf'){
+      const pdfPages=await loadPDF(f);
+      newPages.push(...pdfPages);
+    } else if(f.type.startsWith('image/')){
+      const page=await loadImage(f);
+      newPages.push(page);
+    }
+  }
+  if(!newPages.length){toast('無法讀取檔案');return;}
+  pages=newPages;cur=0;
+  document.getElementById('book-title').innerHTML=arr[0].name.replace(/\.[^.]+$/,'')+' <span class="demo-tag">上傳</span>';
+  buildThumbs();render();
+  toast(`已載入 ${pages.length} 頁`);
+}
+
+function loadImage(file){
+  return new Promise(resolve=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      // make thumb by drawing to small canvas
+      const c=document.createElement('canvas');
+      c.width=80;c.height=110;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#faf8f0';ctx.fillRect(0,0,80,110);
+      const r=Math.min(80/img.width,110/img.height);
+      const w=img.width*r,h=img.height*r;
+      ctx.drawImage(img,(80-w)/2,(110-h)/2,w,h);
+      resolve({kind:'img',content:url,thumb:c.toDataURL(),label:file.name});
+    };
+    img.src=url;
+  });
+}
+
+async function loadPDF(file){
+  if(!window.pdfjsLib){toast('PDF.js 載入中，請稍候再試');return[];}
+  const url=URL.createObjectURL(file);
+  const pdf=await pdfjsLib.getDocument(url).promise;
+  const result=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    // full res
+    const vp=page.getViewport({scale:2});
+    const c=document.createElement('canvas');
+    c.width=vp.width;c.height=vp.height;
+    await page.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+    const full=c.toDataURL('image/jpeg',0.88);
+    // thumb
+    const tv=page.getViewport({scale:0.3});
+    const tc=document.createElement('canvas');
+    tc.width=tv.width;tc.height=tv.height;
+    await page.render({canvasContext:tc.getContext('2d'),viewport:tv}).promise;
+    const thumb=tc.toDataURL('image/jpeg',0.7);
+    result.push({kind:'img',content:full,thumb,label:`第${i}頁`});
+  }
+  URL.revokeObjectURL(url);
+  return result;
+}
+
+// ── Init ──
+initDemo();buildThumbs();render();
 </script>
 </body>
 </html>
